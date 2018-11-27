@@ -1,5 +1,6 @@
 
-This is an implementation of the DeleteOnly and DeleteAndRetrieve models from this paper: https://arxiv.org/pdf/1804.06437.pdf
+This is an implementation of the DeleteOnly and DeleteAndRetrieve models from [Delete, Retrieve, Generate:
+A Simple Approach to Sentiment and Style Transfer](https://arxiv.org/pdf/1804.06437.pdf)
 
 # Usage
 
