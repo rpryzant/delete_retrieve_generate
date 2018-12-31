@@ -63,7 +63,7 @@ sc = SalienceCalculator(corpus1, corpus2)
 
 for tok in vocab:
 #    print(tok, sc.salience(tok))
-    if sc.salience(tok) > r:
+    if max(sc.salience(tok, attribute='pre'), sc.salience(tok, attribute='post')) > r:
         print(tok)
 
 
