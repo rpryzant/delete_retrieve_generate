@@ -22,7 +22,7 @@ python tools/make_vocab.py [entire corpus] [vocab size] > vocab.txt
 python tools/make_attribute_vocab.py vocab.txt [corpus src file] [corpus tgt file] [salience ratio] > attribute_vocab.txt
 ```
 
-# Questions, feedback
+# Questions, feedback...bugs?
 
 rpryzant@stanford.edu
 
