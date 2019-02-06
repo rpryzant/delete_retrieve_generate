@@ -11,7 +11,7 @@ A Simple Approach to Sentiment and Style Transfer](https://arxiv.org/pdf/1804.06
 
 This will train a model using the parameters in `sample_config.json`. Checkpoints, logs, decodings, and TensorBoard summaries will go into config's `working_dir`. The model will perform inference after each epoch. 
 
-Supported model types are `delete`, `delete_retrieve`, and `seq2seq` (which is a standard translation-style model).
+See `sample_config.json` for all of the training options. The most important parameter is `model_type`, which can be `delete`, `delete_retrieve`, and `seq2seq` (which is a standard translation-style model).
 
 ### Vocab generation
 
