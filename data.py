@@ -37,7 +37,8 @@ class CorpusSearcher(object):
 
         # use the retrieved i to pick examples from the VALUE corpus
         selected = [
-            (self.query_corpus[i], self.key_corpus[i], self.value_corpus[i], i, score) 
+            #(self.query_corpus[i], self.key_corpus[i], self.value_corpus[i], i, score) # useful for debugging 
+            (self.value_corpus[i], i, score) 
             for (score, i) in selected
         ]
 
@@ -145,8 +146,8 @@ def sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
             sims = dist_measurer.most_similar(corpus_idx + i)[1:]  # top match is the current line
             try:
                 line = next( (
-                    tgt_attr.split() for src_cntnt, tgt_cntnt, tgt_attr, _, _ in sims
-                    if tgt_attr != ' '.join(line) # and tgt_attr != ''   # TODO -- exclude blanks?
+                    tgt_attr.split() for tgt_attr, _, _ in sims
+                    if set(tgt_attr.split()) != set(line[1:-1]) # and tgt_attr != ''   # TODO -- exclude blanks?
                 ) )
             # all the matches are blanks
             except StopIteration:
@@ -172,7 +173,13 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
     ]
 
     if dist_measurer is not None:
+        for l in lines:
+            print(' '.join(l))
         lines = sample_replace(lines, dist_measurer, sample_rate, index)
+        print()
+        for l in lines:
+            print(' '.join(l))
+
 
     lens = [len(line) - 1 for line in lines]
     max_len = max(lens)
@@ -248,7 +255,7 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
             in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True)
         attributes =  get_minibatch(
             out_dataset['attribute'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[-1],
-            dist_measurer=out_dataset['dist_measurer'], sample_rate=0.25)
+            dist_measurer=out_dataset['dist_measurer'], sample_rate=0.0 if is_test else 0.25)
         outputs = get_minibatch(
             out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[-1])
 
