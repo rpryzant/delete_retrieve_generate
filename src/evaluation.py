@@ -8,8 +8,8 @@ from torch.autograd import Variable
 import torch.nn as nn
 import editdistance
 
-import data
-from cuda import CUDA
+import src.data as data
+from src.cuda import CUDA
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
@@ -56,43 +56,6 @@ def get_edit_distance(hypotheses, reference):
         ed += editdistance.eval(hyp, ref)
 
     return ed * 1.0 / len(hypotheses)
-
-
-def get_precisions_recalls(inputs, preds, ground_truths):
-    def precision_recall(src, tgt, pred):
-        src_set = set(src)
-        tgt_set = set(tgt)
-        pred_set = set(pred)
-    
-        tgt_unique = tgt_set - src_set
-        src_unique = src_set - tgt_set
-        shared = tgt_set & src_set
-        
-        correct_shared = len(pred_set & shared)
-        correct_tgt = len(pred_set & tgt_unique)
-        
-        incorrect_src = len(pred_set & src_unique)
-        incorrect_unseen = len(pred_set - src_set - tgt_set)
-        
-        # words the model correctly introduced
-        tp = correct_tgt
-        # words the model incorrectly introduced
-        fp = incorrect_unseen
-        # bias words the model incorrectly kept
-        fn = incorrect_src
-        
-        precision = tp * 1.0 / (tp + fp + 0.001)
-        recall = tp * 1.0 / (tp + fn + 0.001)
-
-        return precision, recall
-
-    [precisions, recalls] = list(zip(*[
-        precision_recall(src, tgt, pred) 
-        for src, tgt, pred in zip(inputs, ground_truths, preds)
-    ]))
-
-    return precisions, recalls
-
 
 
 def decode_minibatch(max_len, start_id, model, src_input, srclens, srcmask,
@@ -185,17 +148,13 @@ def inference_metrics(model, src, tgt, config):
 
     bleu = get_bleu(preds, ground_truths)
     edit_distance = get_edit_distance(preds, ground_truths)
-    precisions, recalls = get_precisions_recalls(inputs, preds, ground_truths)
-
-    precision = np.average(precisions)
-    recall = np.average(recalls)
 
     inputs = [' '.join(seq) for seq in inputs]
     preds = [' '.join(seq) for seq in preds]
     ground_truths = [' '.join(seq) for seq in ground_truths]
     auxs = [' '.join(seq) for seq in auxs]
 
-    return bleu, edit_distance, precision, recall, inputs, preds, ground_truths, auxs
+    return bleu, edit_distance, inputs, preds, ground_truths, auxs
 
 
 def evaluate_lpp(model, src, tgt, config):

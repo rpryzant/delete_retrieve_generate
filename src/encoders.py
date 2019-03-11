@@ -4,7 +4,7 @@ from torch.autograd import Variable
 import torch
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
-from cuda import CUDA
+from src.cuda import CUDA
 
 class LSTMEncoder(nn.Module):
     """ simple wrapper for a bi-lstm """

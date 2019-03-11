@@ -7,10 +7,10 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 
-import decoders
-import encoders
+import src.decoders as decoders
+import src.encoders as encoders
 
-from cuda import CUDA
+from src.cuda import CUDA
 
 
 def get_latest_ckpt(ckpt_dir):

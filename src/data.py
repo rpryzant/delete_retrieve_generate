@@ -7,7 +7,7 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 import torch
 from torch.autograd import Variable
 
-from cuda import CUDA
+from src.cuda import CUDA
 
 
 class CorpusSearcher(object):
@@ -173,13 +173,7 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
     ]
 
     if dist_measurer is not None:
-        for l in lines:
-            print(' '.join(l))
         lines = sample_replace(lines, dist_measurer, sample_rate, index)
-        print()
-        for l in lines:
-            print(' '.join(l))
-
 
     lens = [len(line) - 1 for line in lines]
     max_len = max(lens)

@@ -1,9 +1,6 @@
 import sys
 
 import json
-import data
-import models
-import utils
 import numpy as np
 import logging
 import argparse
@@ -17,8 +14,10 @@ import torch.nn as nn
 import torch.optim as optim
 from tensorboardX import SummaryWriter
 
-import evaluation
-from cuda import CUDA
+import src.evaluation as evaluation
+from src.cuda import CUDA
+import src.data as data
+import src.models as models
 
 
 
@@ -208,7 +207,7 @@ for epoch in range(start_epoch, config['training']['epochs']):
     writer.add_scalar('eval/loss', dev_loss, epoch)
 
     if args.bleu and epoch >= config['training'].get('bleu_start_epoch', 1):
-        cur_metric, edit_distance, precision, recall, inputs, preds, golds, auxs = evaluation.inference_metrics(
+        cur_metric, edit_distance, inputs, preds, golds, auxs = evaluation.inference_metrics(
             model, src_test, tgt_test, config)
 
         with open(working_dir + '/auxs.%s' % epoch, 'w') as f:
@@ -220,8 +219,6 @@ for epoch in range(start_epoch, config['training']['epochs']):
         with open(working_dir + '/golds.%s' % epoch, 'w') as f:
             f.write('\n'.join(golds) + '\n')
 
-        writer.add_scalar('eval/precision', precision, epoch)
-        writer.add_scalar('eval/recall', recall, epoch)
         writer.add_scalar('eval/edit_distance', edit_distance, epoch)
         writer.add_scalar('eval/bleu', cur_metric, epoch)
 
