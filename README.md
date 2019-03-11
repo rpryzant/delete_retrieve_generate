@@ -14,7 +14,7 @@ This will reproduce the _delete_ model on a dataset of yelp reviews:
 ![curves](https://i.imgur.com/jfYaDBr.png)
 
 
-Checkpoints, logs, decodings, and TensorBoard summaries will go into config's `working_dir`. 
+Checkpoints, logs, decodings, and TensorBoard summaries are written in the config's `working_dir`. 
 
 See `yelp_config.json` for all of the training options. The most important parameter is `model_type`, which can be set to `delete`, `delete_retrieve`, or `seq2seq` (which is a standard translation-style model).
 
