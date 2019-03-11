@@ -4,8 +4,8 @@
     "learning_rate": 0.0003,
     "max_norm": 3.0,
     "epochs": 70,
-    "batches_per_report": 1,
-    "batches_per_sampling": 2000,
+    "batches_per_report": 200,
+    "batches_per_sampling": 500,
     "random_seed": 1
   },
   "data": {
@@ -19,7 +19,7 @@
     "attribute_vocab": "paper_data/yelp/vocab.attribute",
     "batch_size": 256,
     "max_len": 50,
-    "working_dir": "paper_run"
+    "working_dir": "working_dir"
   },
     "model": {
         "model_type": "delete",
