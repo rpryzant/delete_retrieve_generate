@@ -7,15 +7,23 @@ A Simple Approach to Sentiment and Style Transfer](https://arxiv.org/pdf/1804.06
 
 ### Training
 
-`python train.py --config sample_config.json --bleu`
+`python train.py --config yelp_config.json --bleu`
 
-This will train a model using the parameters in `sample_config.json`. Checkpoints, logs, decodings, and TensorBoard summaries will go into config's `working_dir`. The model will perform inference after each epoch. 
+This will reproduce the _delete_ model on a dataset of yelp reviews:
 
-See `sample_config.json` for all of the training options. The most important parameter is `model_type`, which can be `delete`, `delete_retrieve`, and `seq2seq` (which is a standard translation-style model).
+![curves](https://i.imgur.com/jfYaDBr.png)
 
-### Vocab generation
 
-Given two corpus files, use the scripts in `tools/` to generate a vocabulary and attribute vocabulary:
+Checkpoints, logs, decodings, and TensorBoard summaries will go into config's `working_dir`. 
+
+See `yelp_config.json` for all of the training options. The most important parameter is `model_type`, which can be set to `delete`, `delete_retrieve`, or `seq2seq` (which is a standard translation-style model).
+
+
+
+
+### Data prep
+
+Given two pre-tokenized corpus files, use the scripts in `tools/` to generate a vocabulary and attribute vocabulary:
 
 ```
 python tools/make_vocab.py [entire corpus file (src + tgt cat'd)] [vocab size] > vocab.txt
