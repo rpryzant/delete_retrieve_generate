@@ -134,19 +134,9 @@ best_metric = 0.0
 best_epoch = 0
 cur_metric = 0.0 # log perplexity or BLEU
 num_batches = len(src['content']) / batch_size
-with open(working_dir + '/stats_labels.csv', 'w') as f:
-    f.write(utils.config_key_string(config) + ',%s,%s\n' % (
-        ('bleu' if args.bleu else 'dev_loss'), 'best_epoch'))
 
 STEP = 0
 for epoch in range(start_epoch, config['training']['epochs']):
-    # if epoch > 3 and cur_metric == 0 or epoch > 7 and cur_metric < 10 or epoch > 15 and cur_metric < 15:
-    #     logging.info('QUITTING...NOT LEARNING WELL')
-    #     with open(working_dir + '/stats.csv', 'w') as f:
-    #         f.write(utils.config_val_string(config) + ',%s,%s\n' % (
-    #             best_metric, best_epoch))
-    #     break
-
     if cur_metric > best_metric:
         # rm old checkpoint
         for ckpt_path in glob.glob(working_dir + '/model.*'):
