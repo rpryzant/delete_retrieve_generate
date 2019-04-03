@@ -233,7 +233,4 @@ for epoch in range(start_epoch, config['training']['epochs']):
     epoch_loss = []
 
 writer.close()
-with open(working_dir + '/stats.csv', 'w') as f:
-    f.write(utils.config_val_string(config) + ',%s,%s\n' % (
-        best_metric, best_epoch))
 
