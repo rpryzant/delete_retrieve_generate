@@ -111,6 +111,7 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
     ))
     tgt_tok2id, tgt_id2tok = build_vocab_maps(config['data']['tgt_vocab'])
     # train time: just pick attributes that are close to the current (using word distance)
+    # because this is only used to noise the inputs
     if train_src is None or train_tgt is None:
         tgt_dist_measurer = CorpusSearcher(
             query_corpus=[' '.join(x) for x in tgt_attribute],
