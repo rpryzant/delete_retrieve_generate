@@ -9,14 +9,14 @@
     "random_seed": 1
   },
   "data": {
-    "src": "paper_data/yelp/sentiment.train.0",
-    "tgt": "paper_data/yelp/sentiment.train.1",
-    "src_test": "paper_data/yelp/reference.test.0",
-    "tgt_test": "paper_data/yelp/reference.test.1",
-    "src_vocab": "paper_data/yelp/vocab",
-    "tgt_vocab": "paper_data/yelp/vocab",
+    "src": "data/yelp/sentiment.train.0",
+    "tgt": "data/yelp/sentiment.train.1",
+    "src_test": "data/yelp/reference.test.0",
+    "tgt_test": "data/yelp/reference.test.1",
+    "src_vocab": "data/yelp/vocab",
+    "tgt_vocab": "data/yelp/vocab",
     "share_vocab": true,
-    "attribute_vocab": "paper_data/yelp/vocab.attribute",
+    "attribute_vocab": "data/yelp/vocab.attribute",
     "batch_size": 256,
     "max_len": 50,
     "working_dir": "working_dir"

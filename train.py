@@ -170,9 +170,10 @@ for epoch in range(start_epoch, config['training']['epochs']):
             decoder_logit.contiguous().view(-1, tgt_vocab_size),
             output_lines_tgt.view(-1)
         )
-        losses.append(loss.data[0])
-        losses_since_last_report.append(loss.data[0])
-        epoch_loss.append(loss.data[0])
+
+        losses.append(loss.item())
+        losses_since_last_report.append(loss.item())
+        epoch_loss.append(loss.item())
         loss.backward()
         norm = nn.utils.clip_grad_norm_(model.parameters(), config['training']['max_norm'])
 
