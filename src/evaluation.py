@@ -193,6 +193,6 @@ def evaluate_lpp(model, src, tgt, config):
             decoder_logit.contiguous().view(-1, len(tgt['tok2id'])),
             output_lines_tgt.view(-1)
         )
-        losses.append(loss.data[0])
+        losses.append(loss.item())
 
     return np.mean(losses)
