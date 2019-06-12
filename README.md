@@ -3,6 +3,12 @@
 This is an implementation of the DeleteOnly and DeleteAndRetrieve models from [Delete, Retrieve, Generate:
 A Simple Approach to Sentiment and Style Transfer](https://arxiv.org/pdf/1804.06437.pdf)
 
+# Installation
+
+`pip install -r requirements.txt`
+
+This code uses python 3. 
+
 # Usage
 
 ### Training
