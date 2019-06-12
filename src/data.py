@@ -22,12 +22,14 @@ class CorpusSearcher(object):
         # rows = docs, cols = features
         self.key_corpus_matrix = self.vectorizer.transform(key_corpus)
         if make_binary:
-            self.key_corpus_matrix = (self.key_corpus_matrix != 0).astype(int) # make binary
+            # make binary
+            self.key_corpus_matrix = (self.key_corpus_matrix != 0).astype(int)
 
         
     def most_similar(self, key_idx, n=10):
-        query = self.query_corpus[key_idx]
+        """ score the query against the keys and take the corresponding values """
 
+        query = self.query_corpus[key_idx]
         query_vec = self.vectorizer.transform([query])
 
         scores = np.dot(self.key_corpus_matrix, query_vec.T)
@@ -79,20 +81,23 @@ def extract_attributes(line, attribute_vocab):
             attribute.append(tok)
         else:
             content.append(tok)
+
     return line, content, attribute
 
 
 def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=None):
     attribute_vocab = set([x.strip() for x in open(attribute_vocab)])
 
-    src_lines = [l.strip().split() for l in open(src, 'r')]
+    src_lines = [l.strip().lower().split() for l in open(src, 'r')]
     src_lines, src_content, src_attribute = list(zip(
         *[extract_attributes(line, attribute_vocab) for line in src_lines]
     ))
     src_tok2id, src_id2tok = build_vocab_maps(config['data']['src_vocab'])
     # train time: just pick attributes that are close to the current (using word distance)
     # we never need to do the TFIDF thing with the source because 
-    # test time is strictly in the src => tgt direction
+    # test time is strictly in the src => tgt direction. 
+    # But we still both src and tgt dist measurers because training is bidirectional
+    #  (i.e., we're autoencoding src and tgt sentences during training)
     src_dist_measurer = CorpusSearcher(
         query_corpus=[' '.join(x) for x in src_attribute],
         key_corpus=[' '.join(x) for x in src_attribute],
@@ -105,7 +110,7 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
         'tok2id': src_tok2id, 'id2tok': src_id2tok, 'dist_measurer': src_dist_measurer
     }
 
-    tgt_lines = [l.strip().split() for l in open(tgt, 'r')] if tgt else None
+    tgt_lines = [l.strip().lower().split() for l in open(tgt, 'r')] if tgt else None
     tgt_lines, tgt_content, tgt_attribute = list(zip(
         *[extract_attributes(line, attribute_vocab) for line in tgt_lines]
     ))
@@ -123,7 +128,7 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
     # at test time, scan through train content (using tfidf) and retrieve corresponding attributes
     else:
         tgt_dist_measurer = CorpusSearcher(
-            query_corpus=[' '.join(x) for x in train_src['content']],
+            query_corpus=[' '.join(x) for x in src_content],
             key_corpus=[' '.join(x) for x in train_tgt['content']],
             value_corpus=[' '.join(x) for x in train_tgt['attribute']],
             vectorizer=TfidfVectorizer(vocabulary=tgt_tok2id),
@@ -133,7 +138,6 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
         'data': tgt_lines, 'content': tgt_content, 'attribute': tgt_attribute,
         'tok2id': tgt_tok2id, 'id2tok': tgt_id2tok, 'dist_measurer': tgt_dist_measurer
     }
-
     return src, tgt
 
 def sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
@@ -144,7 +148,9 @@ def sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
     out = [None for _ in range(len(lines))]
     for i, line in enumerate(lines):
         if random.random() < sample_rate:
-            sims = dist_measurer.most_similar(corpus_idx + i)[1:]  # top match is the current line
+            # top match is the current line
+            sims = dist_measurer.most_similar(corpus_idx + i)[1:]
+            
             try:
                 line = next( (
                     tgt_attr.split() for tgt_attr, _, _ in sims
@@ -248,11 +254,23 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
     elif model_type == 'delete_retrieve':
         inputs =  get_minibatch(
             in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True)
-        attributes =  get_minibatch(
-            out_dataset['attribute'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[-1],
-            dist_measurer=out_dataset['dist_measurer'], sample_rate=0.0 if is_test else 0.25)
         outputs = get_minibatch(
             out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[-1])
+
+        if is_test:
+            # This dist_measurer has sentence attributes for values, so setting 
+            # the sample rate to 1 means the output is always replaced with an
+            # attribute. So we're still getting attributes even though
+            # the method is being fed content. 
+            attributes =  get_minibatch(
+                in_dataset['content'], out_dataset['tok2id'], idx, 
+                batch_size, max_len, idx=inputs[-1],
+                dist_measurer=out_dataset['dist_measurer'], sample_rate=1.0)
+        else:
+            attributes =  get_minibatch(
+                out_dataset['attribute'], out_dataset['tok2id'], idx, 
+                batch_size, max_len, idx=inputs[-1],
+                dist_measurer=out_dataset['dist_measurer'], sample_rate=0.25)
 
     elif model_type == 'seq2seq':
         # ignore the in/out dataset stuff
