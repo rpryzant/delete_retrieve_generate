@@ -41,3 +41,7 @@ python tools/make_ngram_attribute_vocab.py vocab.txt [corpus src file] [corpus t
 
 rpryzant@stanford.edu
 
+# Acknowledgements
+
+Thanks lots to [Karishma Mandyam](https://github.com/kmandyam) for contributing! 
+
