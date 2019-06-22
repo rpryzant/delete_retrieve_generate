@@ -34,6 +34,7 @@ Given two pre-tokenized corpus files, use the scripts in `tools/` to generate a 
 ```
 python tools/make_vocab.py [entire corpus file (src + tgt cat'd)] [vocab size] > vocab.txt
 python tools/make_attribute_vocab.py vocab.txt [corpus src file] [corpus tgt file] [salience ratio] > attribute_vocab.txt
+python tools/make_ngram_attribute_vocab.py vocab.txt [corpus src file] [corpus tgt file] [salience ratio] > attribute_vocab.txt
 ```
 
 # Questions, feedback, bugs
