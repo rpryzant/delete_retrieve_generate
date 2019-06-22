@@ -68,7 +68,8 @@ src, tgt = data.read_nmt_data(
     src=config['data']['src'],
     config=config,
     tgt=config['data']['tgt'],
-    attribute_vocab=config['data']['attribute_vocab']
+    attribute_vocab=config['data']['attribute_vocab'],
+    ngram_attributes=config['data']['ngram_attributes']
 )
 
 src_test, tgt_test = data.read_nmt_data(
@@ -76,6 +77,7 @@ src_test, tgt_test = data.read_nmt_data(
     config=config,
     tgt=config['data']['tgt_test'],
     attribute_vocab=config['data']['attribute_vocab'],
+    ngram_attributes=config['data']['ngram_attributes'],
     train_src=src,
     train_tgt=tgt
 )
