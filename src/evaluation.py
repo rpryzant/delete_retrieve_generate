@@ -13,6 +13,8 @@ from src.cuda import CUDA
 
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+# BLEU functions from https://github.com/MaximumEntropy/Seq2Seq-PyTorch
+#    (ran some comparisons, and it matches moses's multi-bleu.perl)
 def bleu_stats(hypothesis, reference):
     """Compute statistics for BLEU."""
     stats = []
