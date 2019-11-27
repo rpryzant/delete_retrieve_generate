@@ -5,7 +5,7 @@ A Simple Approach to Sentiment and Style Transfer](https://arxiv.org/pdf/1804.06
 
 # Installation
 
-`pip install -r requirements.txt`
+`pip3 install -r requirements.txt`
 
 This code uses python 3. 
 
@@ -13,7 +13,7 @@ This code uses python 3.
 
 ### Training
 
-`python train.py --config yelp_config.json --bleu`
+`python3 train.py --config yelp_config.json --bleu`
 
 This will reproduce the _delete_ model on a dataset of yelp reviews:
 
