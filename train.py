@@ -134,7 +134,8 @@ losses_since_last_report = []
 best_metric = 0.0
 best_epoch = 0
 cur_metric = 0.0 # log perplexity or BLEU
-num_batches = len(src['content']) / batch_size
+num_examples = min(len(src['content']), len(tgt['content']))
+num_batches = num_examples / batch_size
 
 STEP = 0
 for epoch in range(start_epoch, config['training']['epochs']):
@@ -149,7 +150,7 @@ for epoch in range(start_epoch, config['training']['epochs']):
         best_epoch = epoch - 1
 
     losses = []
-    for i in range(0, len(src['content']), batch_size):
+    for i in range(0, num_examples, batch_size):
 
         if args.overfit:
             i = 50
