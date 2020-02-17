@@ -48,7 +48,7 @@ Thanks lots to [Karishma Mandyam](https://github.com/kmandyam) for contributing!
 
 # Citation
 
-If you use this package in your own research can you please cite 
+If you use this code as part of your own research can you please cite 
 
 (1) the original paper:
 ```
