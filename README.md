@@ -37,15 +37,6 @@ python tools/make_attribute_vocab.py vocab.txt [corpus src file] [corpus tgt fil
 python tools/make_ngram_attribute_vocab.py vocab.txt [corpus src file] [corpus tgt file] [salience ratio] > attribute_vocab.txt
 ```
 
-# Questions, feedback, bugs
-
-rpryzant@stanford.edu
-
-# Acknowledgements
-
-Thanks lots to [Karishma Mandyam](https://github.com/kmandyam) for contributing! 
-
-
 # Citation
 
 If you use this code as part of your own research can you please cite 
@@ -73,3 +64,12 @@ If you use this code as part of your own research can you please cite
  year = {2020}
 }
 ```
+
+
+# Questions, feedback, bugs
+
+rpryzant@stanford.edu
+
+# Acknowledgements
+
+Thanks lots to [Karishma Mandyam](https://github.com/kmandyam) for contributing! 
