@@ -187,12 +187,12 @@ for epoch in range(start_epoch, config['training']['epochs']):
         if args.overfit or batch_idx % config['training']['batches_per_report'] == 0:
 
             s = float(time.time() - start_since_last_report)
-            wps = (batch_size * config['training']['batches_per_report']) / s
+            eps = (batch_size * config['training']['batches_per_report']) / s
             avg_loss = np.mean(losses_since_last_report)
-            info = (epoch, batch_idx, num_batches, wps, avg_loss, cur_metric)
-            writer.add_scalar('stats/WPS', wps, STEP)
+            info = (epoch, batch_idx, num_batches, eps, avg_loss, cur_metric)
+            writer.add_scalar('stats/EPS', eps, STEP)
             writer.add_scalar('stats/loss', avg_loss, STEP)
-            logging.info('EPOCH: %s ITER: %s/%s WPS: %.2f LOSS: %.4f METRIC: %.4f' % info)
+            logging.info('EPOCH: %s ITER: %s/%s EPS: %.2f LOSS: %.4f METRIC: %.4f' % info)
             start_since_last_report = time.time()
             words_since_last_report = 0
             losses_since_last_report = []
