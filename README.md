@@ -11,7 +11,7 @@ This code uses python 3.
 
 # Usage
 
-### Training
+### Training (runs inference on the dev set after each epoch)
 
 `python3 train.py --config yelp_config.json --bleu`
 
