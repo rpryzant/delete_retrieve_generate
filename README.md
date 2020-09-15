@@ -24,7 +24,11 @@ Checkpoints, logs, model outputs, and TensorBoard summaries are written in the c
 
 See `yelp_config.json` for all of the training options. The most important parameter is `model_type`, which can be set to `delete`, `delete_retrieve`, or `seq2seq` (which is a standard translation-style model).
 
+### Inference
 
+`python inference.py --config yelp_config.json --checkpoint path/to/model.ckpt`
+
+To run inference, you can point the `src_test` and `tgt_test` fields in your config to new data. 
 
 
 ### Data prep
