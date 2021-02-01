@@ -27,11 +27,11 @@ parser.add_argument(
     help="path to json config",
     required=True
 )
-parser.add_argument(
-    "--bleu",
-    help="do BLEU eval",
-    action='store_true'
-)
+# parser.add_argument(
+#     "--bleu",
+#     help="do BLEU eval",
+#     action='store_true'
+# )
 parser.add_argument(
     "--overfit",
     help="train continuously on one batch of data",
@@ -131,7 +131,9 @@ epoch_loss = []
 start_since_last_report = time.time()
 words_since_last_report = 0
 losses_since_last_report = []
-best_metric = 0.0
+# best_metric = 0.0
+lowest_loss = 10.0 # Use reconstruction loss for selecting the best model
+current_loss = 10.0 # Use reconstruction loss for selecting the best model
 best_epoch = 0
 cur_metric = 0.0 # log perplexity or BLEU
 num_examples = min(len(src['content']), len(tgt['content']))
@@ -139,14 +141,15 @@ num_batches = num_examples / batch_size
 
 STEP = 0
 for epoch in range(start_epoch, config['training']['epochs']):
-    if cur_metric > best_metric:
-        # rm old checkpoint
+    logging.info(f'Losses in epoch {epoch} - current_loss:{current_loss:.2f}, lowest_loss: {lowest_loss:.2f}')
+
+    if current_loss <= lowest_loss:
         for ckpt_path in glob.glob(working_dir + '/model.*'):
             os.system("rm %s" % ckpt_path)
         # replace with new checkpoint
         torch.save(model.state_dict(), working_dir + '/model.%s.ckpt' % epoch)
 
-        best_metric = cur_metric
+        lowest_loss = current_loss
         best_epoch = epoch - 1
 
     losses = []
@@ -189,10 +192,11 @@ for epoch in range(start_epoch, config['training']['epochs']):
             s = float(time.time() - start_since_last_report)
             eps = (batch_size * config['training']['batches_per_report']) / s
             avg_loss = np.mean(losses_since_last_report)
-            info = (epoch, batch_idx, num_batches, eps, avg_loss, cur_metric)
+            current_loss = avg_loss
+            info = (epoch, batch_idx, num_batches, eps, avg_loss)
             writer.add_scalar('stats/EPS', eps, STEP)
             writer.add_scalar('stats/loss', avg_loss, STEP)
-            logging.info('EPOCH: %s ITER: %s/%s EPS: %.2f LOSS: %.4f METRIC: %.4f' % info)
+            logging.info('EPOCH: %s ITER: %s/%s EPS: %.2f LOSS: %.4f ' % info)
             start_since_last_report = time.time()
             words_since_last_report = 0
             losses_since_last_report = []
@@ -210,7 +214,7 @@ for epoch in range(start_epoch, config['training']['epochs']):
 
     writer.add_scalar('eval/loss', dev_loss, epoch)
 
-    if args.bleu and epoch >= config['training'].get('inference_start_epoch', 1):
+    if epoch >= config['training'].get('inference_start_epoch', 1):
         cur_metric, edit_distance, inputs, preds, golds, auxs = evaluation.inference_metrics(
             model, src_test, tgt_test, config)
 
@@ -231,8 +235,8 @@ for epoch in range(start_epoch, config['training']['epochs']):
 
     model.train()
 
-    logging.info('METRIC: %s. TIME: %.2fs CHECKPOINTING...' % (
-        cur_metric, (time.time() - start)))
+    logging.info('LOSS: %s. TIME: %.2fs CHECKPOINTING...' % (
+        current_loss, (time.time() - start)))
     avg_loss = np.mean(epoch_loss)
     epoch_loss = []
 

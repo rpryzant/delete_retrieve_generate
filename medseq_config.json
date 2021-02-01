@@ -1,0 +1,38 @@
+{
+    "training": {
+        "optimizer": "adam",
+        "learning_rate": 0.0003,
+        "max_norm": 3.0,
+        "epochs": 300,
+        "batches_per_report": 200,
+        "batches_per_sampling": 500,
+        "random_seed": 1
+    },
+    "data": {
+        "src": "mimic_data/train_neg.txt",
+        "tgt": "mimic_data/train_pos.txt",
+        "src_test": "mimic_data/validation_neg.txt",
+        "tgt_test": "mimic_data/validation_pos.txt",
+        "src_vocab": "mimic_data/vocab.txt",
+        "tgt_vocab": "mimic_data/vocab.txt",
+        "share_vocab": true,
+        "attribute_vocab": "mimic_data/ngram_attribute_vocab.txt",
+        "ngram_attributes": true,
+        "batch_size": 128,
+        "max_len": 74,
+        "working_dir": "working_dir_delete"
+    },
+    "model": {
+        "model_type": "delete",
+        "emb_dim": 128,
+        "attention": false,
+        "encoder": "lstm",
+        "src_hidden_dim": 512,
+        "src_layers": 1,
+        "bidirectional": true,
+        "tgt_hidden_dim": 512,
+        "tgt_layers": 1,
+        "decode": "greedy",
+        "dropout": 0.2
+    }
+}

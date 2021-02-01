@@ -121,7 +121,7 @@ with open(working_dir + '/golds', 'w') as f:
 
 logging.info('INFERENCE DONE. Outputs written to %s' %  (working_dir + "/preds"))
 logging.info('\tEdit distance: ' + str(edit_distance))
-logging.info('\tBLEU: ' + str(bleu))
+# logging.info('\tBLEU: ' + str(bleu))
 logging.info('\tLPP: ' + str(dev_loss))
 
 
