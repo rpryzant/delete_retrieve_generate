@@ -1,79 +1,53 @@
-# Description
+# Counterfactual Explanations for Survival Prediction of Cardiovascular Disease
+We adopt the implementation of the Delete-Retrieve-Generate framework from [Reid Pryzant](https://github.com/rpryzant/delete_retrieve_generate) to address the proposed counterfactual explanation problem on medical event sequence data.
 
-This is an implementation of the DeleteOnly and DeleteAndRetrieve models from [Delete, Retrieve, Generate:
-A Simple Approach to Sentiment and Style Transfer](https://arxiv.org/pdf/1804.06437.pdf)
+## MIMIC-III data 
+[MIMIC-III](https://mimic.physionet.org/gettingstarted/overview/) dataset is originally collected from ICU patients' eletronic health records in the Beth Israel Deaconess Medical Center. 
 
-# Installation
-
-`pip3 install -r requirements.txt`
-
-This code uses python 3. 
-
-# Usage
-
-### Training (runs inference on the dev set after each epoch)
-
-`python3 train.py --config yelp_config.json --bleu`
-
-This will reproduce the _delete_ model on a dataset of yelp reviews:
-
-![curves](https://i.imgur.com/jfYaDBr.png)
+The data pre-processing step is done in the [Jupyter notebook](./notebooks/1-data-preprocessing.ipynb). Coding environment is Python 3. Please note that one need to request the access from MIMIC III and install the postgres database as their instruction, in order to actually use the notebook for generating training/validation dataset.
 
 
-Checkpoints, logs, model outputs, and TensorBoard summaries are written in the config's `working_dir`.
+## Installation
 
-See `yelp_config.json` for all of the training options. The most important parameter is `model_type`, which can be set to `delete`, `delete_retrieve`, or `seq2seq` (which is a standard translation-style model).
+`pip install -r requirements.txt`
 
-### Inference
+## Running the DRG method
 
-`python inference.py --config yelp_config.json --checkpoint path/to/model.ckpt`
-
-To run inference, you can point the `src_test` and `tgt_test` fields in your config to new data. 
-
-
-### Data prep
-
-Given two pre-tokenized corpus files, use the scripts in `tools/` to generate a vocabulary and attribute vocabulary:
+Before acutally running the training script, we need to generate n-gram attribute vocabulary list. First, we need to concanate `train_pos.txt` and `train_neg.txt` into `train_all.txt`,
 
 ```
-python tools/make_vocab.py [entire corpus file (src + tgt cat'd)] [vocab size] > vocab.txt
-python tools/make_attribute_vocab.py vocab.txt [corpus src file] [corpus tgt file] [salience ratio] > attribute_vocab.txt
-python tools/make_ngram_attribute_vocab.py vocab.txt [corpus src file] [corpus tgt file] [salience ratio] > attribute_vocab.txt
+cat mimic_data/train_pos.txt mimic_data/train_neg.txt > mimic_data/train_all.txt
 ```
 
-# Citation
-
-If you use this code as part of your own research can you please cite 
-
-(1) the original paper:
+and then simply run:
 ```
-@inproceedings{li2018transfer,
- author = {Juncen Li and Robin Jia and He He and Percy Liang},
- booktitle = {North American Association for Computational Linguistics (NAACL)},
- title = {Delete, Retrieve, Generate: A Simple Approach to Sentiment and Style Transfer},
- url = {https://nlp.stanford.edu/pubs/li2018transfer.pdf},
- year = {2018}
-}
+python tools/make_vocab.py mimic_data/train_all.txt 3000 > mimic_data/vocab.txt
 
+python tools/make_ngram_attribute_vocab.py mimic_data/vocab.txt mimic_data/train_neg.txt mimic_data/train_pos.txt 15 > mimic_data/ngram_attribute_vocab.txt
 ```
 
-(2) The paper that this implementation was developed for:
+After that, we run the training script: 
+
 ```
-@inproceedings{pryzant2020bias,
- author = {Pryzant, Reid and Richard, Diehl Martinez and Dass, Nathan and Kurohashi, Sadao and Jurafsky, Dan and Yang, Diyi},
- booktitle = {Association for the Advancement of Artificial Intelligence (AAAI)},
- link = {https://nlp.stanford.edu/pubs/pryzant2020bias.pdf},
- title = {Automatically Neutralizing Subjective Bias in Text},
- url = {https://nlp.stanford.edu/pubs/pryzant2020bias.pdf},
- year = {2020}
-}
+python train.py --config medseq_config.json
 ```
 
+The default [configuration file](./medseq_config.json) is for DeleteOnly (*Alg. 1* with *r=False*), which can generate a trained DeleteOnly model in the folder `working_dir_delete`. The folder also include checkpoints, logs, model outputs, and TensorBoard summaries.  
 
-# Questions, feedback, bugs
 
-rpryzant@stanford.edu
+For the DeleteAndRetrieve model (*Alg. 1* with *r=True*), we simply need to change `model_type` parameter to `delete_retrieve` in `medseq_config.json`. And run the same command above for training. Note that other hyper-papermeters are also editable in the config file. 
 
-# Acknowledgements
+## Inference
+There is an inference script that we can apply the trained model to do extra inferences with a new test dataset. We can modify `src_test` parameters in the config file (we can ignore the `tgt_test` parameter since there is no target dataset at inference time).
 
-Thanks lots to [Karishma Mandyam](https://github.com/kmandyam) for contributing! 
+```
+python inference.py --config medseq_config.json --checkpoint working_dir_delete/$checkpoint_file$
+
+python inference.py --config medseq_config.json --checkpoint working_dir_delete_retrieve/$checkpoint_file$
+```
+
+MIMIC-III demo data: https://physionet.org/content/mimiciii-demo/1.4/. 
+
+
+## Running the 1-NN method
+The 1-NN method and the LSTM model are implemented in [this Jupyter notebook](./notebooks). 
