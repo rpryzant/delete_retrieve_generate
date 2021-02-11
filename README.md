@@ -56,3 +56,17 @@ MIMIC-III demo data: https://physionet.org/content/mimiciii-demo/1.4/.
 
 ## Running the 1-NN method
 The 1-NN method and the LSTM model (for survival prediction) are implemented in [this Jupyter notebook](./notebooks/2-LSTM-model-and-generate-counterfactuals.ipynb). All the evaluation results and plots are implemented in the same notebook as well.
+
+## Toy example
+A toy example dataset is now added in [this folder](./toy_example/). The script for constructing the dataset is located at [here](.//notebooks/3-construct-toy-example.ipynb). The original data source is MIMIC-III Clinical Database Demo: https://physionet.org/content/mimiciii-demo/1.4/.
+
+Similar to the commands above, simply run the toy example as below:
+```
+cat toy_example/train_pos.txt toy_example/train_neg.txt > toy_example/train_all.txt
+
+python tools/make_vocab.py toy_example/train_all.txt 3000 > toy_example/vocab.txt
+
+python tools/make_ngram_attribute_vocab.py toy_example/vocab.txt toy_example/train_neg.txt toy_example/train_pos.txt 15 > toy_example/ngram_attribute_vocab.txt
+
+python train.py --config toy_config.json
+```
