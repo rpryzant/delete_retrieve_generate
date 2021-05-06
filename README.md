@@ -70,9 +70,26 @@ If you use this code as part of your own research can you please cite
 ```
 
 
-# Questions, feedback, bugs
+# FAQ
 
-rpryzant@stanford.edu
+### Why can't I get the same BLEU score as the original paper? 
+
+- My script just runs in one direction (e.g. pos => neg). Maybe running the model in both directions (pos => neg, neg => pos) and then averaging the BLEU would get closer to their results
+- The [implementation of BLEU that the original paper used](https://github.com/lijuncen/Sentiment-and-Style-Transfer/blob/250d22d39607bf697082861af935ab8e66e2160c/src/test_tool/BLEU/my_bleu_evaluate.py) has bugs in it and does not report correct BLEU scores. For example, it disagrees with [multi-bleu.perl](https://github.com/moses-smt/mosesdecoder/blob/master/scripts/generic/multi-bleu.perl) which is a canonical implementation of BLEU. If you use their script on our outputs you get something more similar (I think ~7.6 ish) but again their script might not be producing correct BLEU scores. 
+
+### Why does `delete_retrieve` run so slowly? 
+
+- The system runs a similarity search over the entire dataset on each training step. Precomputing some of these similarities would definitely speed things up if people are interested in contributing!
+
+### What does the salience ratio mean? How was your number chosen?
+
+- Intuitively the salience ratio says how strongly associated with each class do you want the attribute ngrams to be. Higher numbers means that the attribute vocab will be more strongly associated with each class, but also that you will have fewer vocab items because the threshold is tighter.
+- The example attributes in this repo use the ratios from the paper, which were selected manually using a dev set. 
+
+
+### I keep getting `IndexError: list index out of range` errors! 
+
+- There is a known bug where the size of the A and B datasets need to match each other (again a great place to contribute!). Since the corpora don't need to be in alignment you can just duplicate some examples or trim one of the datasets so that they match each other. 
 
 # Acknowledgements
 
