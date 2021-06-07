@@ -91,6 +91,13 @@ If you use this code as part of your own research can you please cite
 
 - There is a known bug where the size of the A and B datasets need to match each other (again a great place to contribute!). Since the corpora don't need to be in alignment you can just duplicate some examples or trim one of the datasets so that they match each other. 
 
+### I keep getting `RuntimeError: cuDNN error: CUDNN_STATUS_EXECUTION_FAILED` errors!
+The pytorch version this has been tested on is 1.1.0, which is compatible with cudatoolkit=9.0/10.0. If your cuda version is newer than this you may get the above error. Possible fix: 
+```
+$ conda install pytorch==1.1.0 torchvison==0.3.0 cudatoolkit=10.0 -c pytorch
+```
+
+
 # Acknowledgements
 
 Thanks lots to [Karishma Mandyam](https://github.com/kmandyam) for contributing! 
