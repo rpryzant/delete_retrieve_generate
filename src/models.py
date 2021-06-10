@@ -111,7 +111,7 @@ class SeqModel(nn.Module):
             attr_size = 0
 
         else:
-            raise NotImplementedError('unknown model type')
+            raise NotImplementedError('unknown model type: %s. Accepted values: [seq2seq, delete_retrieve, delete]' % self.model_type)
 
         self.c_bridge = nn.Linear(
             attr_size + self.options['src_hidden_dim'], 
