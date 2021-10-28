@@ -69,7 +69,8 @@ src, tgt = data.read_nmt_data(
     config=config,
     tgt=config['data']['tgt'],
     attribute_vocab=config['data']['attribute_vocab'],
-    ngram_attributes=config['data']['ngram_attributes']
+    ngram_attributes=config['data']['ngram_attributes'],
+    read_diagnosis=config['model']['add_diagnosis_layer']
 )
 
 src_test, tgt_test = data.read_nmt_data(
@@ -79,7 +80,8 @@ src_test, tgt_test = data.read_nmt_data(
     attribute_vocab=config['data']['attribute_vocab'],
     ngram_attributes=config['data']['ngram_attributes'],
     train_src=src,
-    train_tgt=tgt
+    train_tgt=tgt,
+    read_diagnosis=config['model']['add_diagnosis_layer']
 )
 logging.info('...done!')
 
@@ -88,7 +90,8 @@ batch_size = config['data']['batch_size']
 max_length = config['data']['max_len']
 src_vocab_size = len(src['tok2id'])
 tgt_vocab_size = len(tgt['tok2id'])
-
+if config['model']['add_diagnosis_layer'] != False:
+    diag_vocab_size = len(src['diag_tok2id']) 
 
 weight_mask = torch.ones(tgt_vocab_size)
 weight_mask[tgt['tok2id']['<pad>']] = 0
@@ -100,13 +103,24 @@ if CUDA:
 torch.manual_seed(config['training']['random_seed'])
 np.random.seed(config['training']['random_seed'])
 
-model = models.SeqModel(
-    src_vocab_size=src_vocab_size,
-    tgt_vocab_size=tgt_vocab_size,
-    pad_id_src=src['tok2id']['<pad>'],
-    pad_id_tgt=tgt['tok2id']['<pad>'],
-    config=config
-)
+if config['model']['add_diagnosis_layer'] != False:
+    model = models.SeqModel(
+        src_vocab_size=src_vocab_size,
+        tgt_vocab_size=tgt_vocab_size,
+        pad_id_src=src['tok2id']['<pad>'],
+        pad_id_tgt=tgt['tok2id']['<pad>'],
+        config=config,
+        diag_vocab_size=diag_vocab_size,
+        pad_id_diag=src['diag_tok2id']['<pad>'],
+    )
+else:
+    model = models.SeqModel(
+            src_vocab_size=src_vocab_size,
+            tgt_vocab_size=tgt_vocab_size,
+            pad_id_src=src['tok2id']['<pad>'],
+            pad_id_tgt=tgt['tok2id']['<pad>'],
+            config=config
+    )
 
 logging.info('MODEL HAS %s params' %  model.count_params())
 model, start_epoch = models.attempt_load_model(
@@ -162,13 +176,13 @@ for epoch in range(start_epoch, config['training']['epochs']):
 
         input_content, input_aux, output = data.minibatch(
             src, tgt, i, batch_size, max_length, config['model']['model_type'])
-        input_lines_src, _, srclens, srcmask, _ = input_content
-        input_ids_aux, _, auxlens, auxmask, _ = input_aux
-        input_lines_tgt, output_lines_tgt, _, _, _ = output
+        input_lines_src, _, srclens, srcmask, _, diag_input_lines, diag_lens, diag_mask = input_content
+        input_ids_aux, _, auxlens, auxmask, _, _, _, _ = input_aux
+        input_lines_tgt, output_lines_tgt, _, _, _, _, _, _ = output
         
         decoder_logit, decoder_probs = model(
             input_lines_src, input_lines_tgt, srcmask, srclens,
-            input_ids_aux, auxlens, auxmask)
+            input_ids_aux, auxlens, auxmask, diag_input_lines, diag_lens, diag_mask)
 
         optimizer.zero_grad()
 

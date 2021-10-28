@@ -19,9 +19,15 @@
         "attribute_vocab": "mimic_data/ngram_attribute_vocab.txt",
         "ngram_attributes": true,
         "batch_size": 128,
-        "max_len": 74,
-        "working_dir": "working_dir_delete"
-    },
+        "max_len": 115,
+        "working_dir": "working_dir_delete",
+        "src_diag": "mimic_data/train_neg_diag.txt",
+        "tgt_diag": "mimic_data/train_pos_diag.txt",
+        "src_test_diag": "mimic_data/validation_neg_diag.txt",
+        "tgt_test_diag": "mimic_data/validation_pos_diag.txt",
+        "vocab_diag": "mimic_data/vocab_diag.txt",
+        "max_len_diag": 148
+        },
     "model": {
         "model_type": "delete",
         "emb_dim": 128,
@@ -33,6 +39,7 @@
         "tgt_hidden_dim": 512,
         "tgt_layers": 1,
         "decode": "greedy",
-        "dropout": 0.2
+        "dropout": 0.2,
+        "add_diagnosis_layer": false
     }
 }

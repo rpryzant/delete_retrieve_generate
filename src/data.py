@@ -120,7 +120,7 @@ def extract_attributes(line, attribute_vocab, use_ngrams=False):
 
 
 def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=None,
-        ngram_attributes=False):
+        ngram_attributes=False, read_diagnosis=False):
 
     if ngram_attributes:
         # read attribute vocab as a dictionary mapping attributes to scores
@@ -137,6 +137,21 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
                 post_attr[attr] = post_salience
     else:
         pre_attr = post_attr = set([x.strip() for x in open(attribute_vocab)])
+
+    ### update: read diagnosis codes 
+    # add if/else for read the diagnosis codes or not
+    if read_diagnosis:
+        if train_src is None or train_tgt is None:
+            # TODO: check [s] and [/s] if generated already; do we need?
+            # 2. check extra padding, vocab creation 3: lens of the sequences 4: masks position
+            src_diag_lines = [l.strip().lower().split() for l in open(config['data']['src_diag'], 'r')] 
+            tgt_diag_lines = [l.strip().lower().split() for l in open(config['data']['tgt_diag'], 'r')] 
+        else:
+            src_diag_lines = [l.strip().lower().split() for l in open(config['data']['src_test_diag'], 'r')] 
+            tgt_diag_lines = [l.strip().lower().split() for l in open(config['data']['tgt_test_diag'], 'r')] 
+        diag_tok2id, diag_id2tok = build_vocab_maps(config['data']['vocab_diag'])
+    else:
+        src_diag_lines, tgt_diag_lines, diag_tok2id, diag_id2tok = None, None, None, None
 
     src_lines = [l.strip().lower().split() for l in open(src, 'r')]
     src_lines, src_content, src_attribute = list(zip(
@@ -157,7 +172,8 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
     )
     src = {
         'data': src_lines, 'content': src_content, 'attribute': src_attribute,
-        'tok2id': src_tok2id, 'id2tok': src_id2tok, 'dist_measurer': src_dist_measurer
+        'tok2id': src_tok2id, 'id2tok': src_id2tok, 'dist_measurer': src_dist_measurer,
+        'src_diag': src_diag_lines, 'diag_tok2id': diag_tok2id, 'diag_id2tok': diag_id2tok
     }
 
     tgt_lines = [l.strip().lower().split() for l in open(tgt, 'r')] if tgt else None
@@ -186,7 +202,9 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
         )
     tgt = {
         'data': tgt_lines, 'content': tgt_content, 'attribute': tgt_attribute,
-        'tok2id': tgt_tok2id, 'id2tok': tgt_id2tok, 'dist_measurer': tgt_dist_measurer
+        'tok2id': tgt_tok2id, 'id2tok': tgt_id2tok, 'dist_measurer': tgt_dist_measurer,
+        'src_diag': tgt_diag_lines, 'diag_tok2id': diag_tok2id, 'diag_id2tok': diag_id2tok
+
     }
     return src, tgt
 
@@ -220,7 +238,7 @@ def sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
 
 
 def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=None,
-        dist_measurer=None, sample_rate=0.0):
+        dist_measurer=None, sample_rate=0.0, diag_lines=None, diag_tok2id=None):
     """Prepare minibatch."""
     # FORCE NO SORTING because we care about the order of outputs
     #   to compare across systems
@@ -253,6 +271,31 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
         for l in lens
     ]
 
+    if diag_lines and diag_tok2id:
+        diag_lens = [len(line) - 1 for line in diag_lines[index:index + batch_size]]
+        diag_max_len = max(diag_lens)
+
+        # diag_idx = [x[0] for x in sorted(enumerate(diag_lens), key=lambda x: -x[1])]
+        # diag_lens = [diag_lens[j] for j in diag_idx]
+
+        diag_unk_id = diag_tok2id['<unk>']
+        diag_input_lines = [
+        [diag_tok2id.get(w, diag_unk_id) for w in line[:-1]] +
+        [diag_tok2id['<pad>']] * (diag_max_len - len(line) + 1)
+        for line in diag_lines[index:index + batch_size]
+        ]
+        # diag_input_lines = [diag_input_lines[j] for j in diag_idx]
+        diag_input_lines = Variable(torch.LongTensor(diag_input_lines))
+
+        diag_mask = [([1] * l) + ([0] * (diag_max_len - l)) 
+        for l in diag_lens[index:index + batch_size]
+        ]
+        # diag_mask = [diag_mask[j] for j in diag_idx]
+        diag_mask = Variable(torch.LongTensor(diag_mask))
+    else:
+        diag_input_lines, diag_lens, diag_mask = None, None, None
+
+
     if sort:
         # sort sequence by descending length
         idx = [x[0] for x in sorted(enumerate(lens), key=lambda x: -x[1])]
@@ -271,8 +314,10 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
         input_lines = input_lines.cuda()
         output_lines = output_lines.cuda()
         mask = mask.cuda()
+        if diag_input_lines is not None and diag_mask is not None:
+            diag_input_lines, diag_mask = diag_input_lines.cuda(), diag_mask.cuda()
 
-    return input_lines, output_lines, lens, mask, idx
+    return input_lines, output_lines, lens, mask, idx, diag_input_lines, diag_lens, diag_mask
 
 
 def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
@@ -288,9 +333,9 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
 
     if model_type == 'delete':
         inputs = get_minibatch(
-            in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True)
+            in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True, diag_lines=in_dataset['src_diag'], diag_tok2id=in_dataset['diag_tok2id']) #TODO: use `max_len_diag`???
         outputs = get_minibatch(
-            out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[-1])
+            out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[4]) # TODO: fix inputs[-1])
 
         # true length could be less than batch_size at edge of data
         batch_len = len(outputs[0])
@@ -299,13 +344,13 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
         if CUDA:
             attribute_ids = attribute_ids.cuda()
 
-        attributes = (attribute_ids, None, None, None, None)
+        attributes = (attribute_ids, None, None, None, None, None, None, None)
 
     elif model_type == 'delete_retrieve':
         inputs =  get_minibatch(
-            in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True)
+            in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True, diag_lines=in_dataset['src_diag'], diag_tok2id=in_dataset['diag_tok2id']) #TODO: use `max_len_diag`???
         outputs = get_minibatch(
-            out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[-1])
+            out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[4]) # TODO: fix inputs[-1]), the position of indexs
 
         if is_test:
             # This dist_measurer has sentence attributes for values, so setting 
@@ -314,12 +359,12 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
             # the method is being fed content. 
             attributes =  get_minibatch(
                 in_dataset['content'], out_dataset['tok2id'], idx, 
-                batch_size, max_len, idx=inputs[-1],
+                batch_size, max_len, idx=inputs[4],
                 dist_measurer=out_dataset['dist_measurer'], sample_rate=1.0)
         else:
             attributes =  get_minibatch(
                 out_dataset['attribute'], out_dataset['tok2id'], idx, 
-                batch_size, max_len, idx=inputs[-1],
+                batch_size, max_len, idx=inputs[4],
                 dist_measurer=out_dataset['dist_measurer'], sample_rate=0.1)
 
     elif model_type == 'seq2seq':
@@ -327,8 +372,8 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
         inputs = get_minibatch(
             src['data'], src['tok2id'], idx, batch_size, max_len, sort=True)
         outputs = get_minibatch(
-            tgt['data'], tgt['tok2id'], idx, batch_size, max_len, idx=inputs[-1])
-        attributes = (None, None, None, None, None)
+            tgt['data'], tgt['tok2id'], idx, batch_size, max_len, idx=inputs[4])
+        attributes = (None, None, None, None, None, None, None, None)
 
     else:
         raise Exception('Unsupported model_type: %s' % model_type)

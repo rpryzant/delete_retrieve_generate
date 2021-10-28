@@ -50,6 +50,8 @@ class SeqModel(nn.Module):
         pad_id_src,
         pad_id_tgt,
         config=None,
+        diag_vocab_size=None,
+        pad_id_diag=None,
     ):
         """Initialize model."""
         super(SeqModel, self).__init__()
@@ -62,10 +64,21 @@ class SeqModel(nn.Module):
         self.options = config['model']
         self.model_type = config['model']['model_type']
 
+        # update: add an embedding layer for diagnosis codes
+        self.diag_vocab_size = diag_vocab_size
+        self.pad_id_diag = pad_id_diag
+
         self.src_embedding = nn.Embedding(
             self.src_vocab_size,
             self.options['emb_dim'],
             self.pad_id_src)
+        
+        # update: add an embedding layer for diagnosis codes
+        if self.config['model']['add_diagnosis_layer']:
+            self.diag_embedding = nn.Embedding(
+                self.diag_vocab_size,
+                self.options['emb_dim'],
+                self.pad_id_diag)
 
         if self.config['data']['share_vocab']:
             self.tgt_embedding = self.src_embedding
@@ -82,6 +95,17 @@ class SeqModel(nn.Module):
                 self.options['src_layers'],
                 self.options['bidirectional'],
                 self.options['dropout'])
+            
+            # update: add an embedding layer for diagnosis codes; fixed hyperparameters
+            if self.config['model']['add_diagnosis_layer']:
+                self.diag_encoder = encoders.LSTMEncoder(
+                    emb_dim=128,
+                    hidden_dim=512,                 
+                    layers=1,                    
+                    bidirectional=False,                # not bidirectional since the patient sequence follows the single-direction order 
+                    dropout=0.2,
+                    pack=False)
+
             self.ctx_bridge = nn.Linear(
                 self.options['src_hidden_dim'],
                 self.options['tgt_hidden_dim'])
@@ -113,11 +137,17 @@ class SeqModel(nn.Module):
         else:
             raise NotImplementedError('unknown model type')
 
+        # update: add an embedding layer for diagnosis codes; concatenate with hidden/cell units here
+        if self.config['model']['add_diagnosis_layer']:
+            bridge_dim = attr_size + self.options['src_hidden_dim'] + 512 # 512 == extra dimension by extra diagnosis embeddings, fixed
+        else: 
+            bridge_dim = attr_size + self.options['src_hidden_dim']
+        
         self.c_bridge = nn.Linear(
-            attr_size + self.options['src_hidden_dim'], 
+            bridge_dim,  
             self.options['tgt_hidden_dim'])
         self.h_bridge = nn.Linear(
-            attr_size + self.options['src_hidden_dim'], 
+            bridge_dim,  
             self.options['tgt_hidden_dim'])
 
         # # # # # #  # # # # # #  # # # # # END NEW STUFF
@@ -141,15 +171,24 @@ class SeqModel(nn.Module):
         self.c_bridge.bias.data.fill_(0)
         self.output_projection.bias.data.fill_(0)
 
-    def forward(self, input_src, input_tgt, srcmask, srclens, input_attr, attrlens, attrmask):
+    def forward(self, input_src, input_tgt, srcmask, srclens, input_attr, attrlens, attrmask, diag_input_lines=None, diag_lens=None, diag_mask=None):
         src_emb = self.src_embedding(input_src)
+
+        use_diagnosis_layer = (diag_input_lines is not None) and (diag_lens is not None) and (diag_mask is not None)
+        if use_diagnosis_layer:
+            diag_emb = self.diag_embedding(diag_input_lines)
 
         srcmask = (1-srcmask).byte()
 
         src_outputs, (src_h_t, src_c_t) = self.encoder(src_emb, srclens, srcmask)
+        if use_diagnosis_layer:
+            diag_outputs, (diag_h_t, diag_c_t) = self.diag_encoder(diag_emb, diag_lens, diag_mask)
+            #diag_outputs.shape = 128x116x512
+            #diag_h_t.shape = 2x128x512
+            #diag_c_t.shape = 2x128x512
 
         if self.options['bidirectional']:
-            h_t = torch.cat((src_h_t[-1], src_h_t[-2]), 1)
+            h_t = torch.cat((src_h_t[-1], src_h_t[-2]), 1) # src_h_t[-2] # src_h_t.shape = 2x128x256
             c_t = torch.cat((src_c_t[-1], src_c_t[-2]), 1)
         else:
             h_t = src_h_t[-1]
@@ -157,6 +196,10 @@ class SeqModel(nn.Module):
 
         src_outputs = self.ctx_bridge(src_outputs)
 
+        # update: add an embedding layer for diagnosis codes; concatenate with hidden/cell units here
+        if use_diagnosis_layer:
+            h_t = torch.cat((h_t, diag_h_t[-1]), -1) # [-1] since no bidirectional, add for the extra embedding layer
+            c_t = torch.cat((c_t, diag_c_t[-1]), -1)
 
         # # # #  # # # #  # #  # # # # # # #  # # seq2seq diff
         # join attribute with h/c then bridge 'em
@@ -187,10 +230,11 @@ class SeqModel(nn.Module):
         # # # #  # # # #  # #  # # # # # # #  # # end diff
 
         tgt_emb = self.tgt_embedding(input_tgt)
+        # decoder.forward(self, input, hidden, ctx, srcmask, kb=None)
         tgt_outputs, (_, _) = self.decoder(
             tgt_emb,
             (h_t, c_t),
-            src_outputs,
+            src_outputs, # TODO: do we need to use `diag_outputs`?
             srcmask)
 
         tgt_outputs_reshape = tgt_outputs.contiguous().view(
