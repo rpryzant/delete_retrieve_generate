@@ -1,6 +1,18 @@
 # Counterfactual Explanations for Survival Prediction of Cardiovascular ICU Patients
 We adopt the implementation of the Delete-Retrieve-Generate framework from [Reid Pryzant](https://github.com/rpryzant/delete_retrieve_generate) to address the proposed counterfactual explanation problem, based on event sequence data which is originally generated from MIMIC-III dataset. Additionally, we implement a baseline 1-NN solution for the same problem that shows competitive performance.
 
+If you find this GitHub repo useful in your research work, please consider citing our paper:
+```
+@inproceedings{wang_counterfactual_2021,
+	title = {Counterfactual {Explanations} for {Survival} {Prediction} of {Cardiovascular} {ICU} {Patients}},
+	doi = {10.1007/978-3-030-77211-6_38},
+	booktitle = {Artificial {Intelligence} in {Medicine}},
+	author = {Wang, Zhendong and Samsten, Isak and Papapetrou, Panagiotis},
+	year = {2021},
+	pages = {338--348},
+}
+```
+
 ## MIMIC-III data 
 [MIMIC-III](https://mimic.physionet.org/gettingstarted/overview/) dataset is a collection of electronic health records (EHRs) from over 40,000 ICU patients at the Beth Israel Deaconess Medical Center, collected between 2001 and 2012. 
 
