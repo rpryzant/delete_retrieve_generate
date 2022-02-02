@@ -87,28 +87,22 @@ src_vocab_size = len(src['tok2id'])
 tgt_vocab_size = len(tgt['tok2id'])
 if config['model']['add_diagnosis_layer'] != False:
     diag_vocab_size = len(src['diag_tok2id']) 
+    pad_id_diag=src['diag_tok2id']['<pad>']
+else:
+    diag_vocab_size, pad_id_diag = None, None
 
 torch.manual_seed(config['training']['random_seed'])
 np.random.seed(config['training']['random_seed'])
 
-if config['model']['add_diagnosis_layer'] != False:
-    model = models.SeqModel(
-        src_vocab_size=src_vocab_size,
-        tgt_vocab_size=tgt_vocab_size,
-        pad_id_src=src['tok2id']['<pad>'],
-        pad_id_tgt=tgt['tok2id']['<pad>'],
-        config=config,
-        diag_vocab_size=diag_vocab_size,
-        pad_id_diag=src['diag_tok2id']['<pad>'],
-    )
-else:
-    model = models.SeqModel(
-            src_vocab_size=src_vocab_size,
-            tgt_vocab_size=tgt_vocab_size,
-            pad_id_src=src['tok2id']['<pad>'],
-            pad_id_tgt=tgt['tok2id']['<pad>'],
-            config=config
-    )
+model = models.SeqModel(
+    src_vocab_size=src_vocab_size,
+    tgt_vocab_size=tgt_vocab_size,
+    pad_id_src=src['tok2id']['<pad>'],
+    pad_id_tgt=tgt['tok2id']['<pad>'],
+    config=config,
+    diag_vocab_size=diag_vocab_size,
+    pad_id_diag=pad_id_diag,
+)
 
 logging.info('MODEL HAS %s params' %  model.count_params())
 model, start_epoch = models.attempt_load_model(

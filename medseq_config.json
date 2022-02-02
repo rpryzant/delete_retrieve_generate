@@ -3,7 +3,7 @@
         "optimizer": "adam",
         "learning_rate": 0.0003,
         "max_norm": 3.0,
-        "epochs": 300,
+        "epochs": 500,
         "batches_per_report": 200,
         "batches_per_sampling": 500,
         "random_seed": 1
@@ -19,14 +19,15 @@
         "attribute_vocab": "mimic_data/ngram_attribute_vocab.txt",
         "ngram_attributes": true,
         "batch_size": 128,
-        "max_len": 115,
+        "max_len": 100,
         "working_dir": "working_dir_delete",
         "src_diag": "mimic_data/train_neg_diag.txt",
         "tgt_diag": "mimic_data/train_pos_diag.txt",
         "src_test_diag": "mimic_data/validation_neg_diag.txt",
         "tgt_test_diag": "mimic_data/validation_pos_diag.txt",
         "vocab_diag": "mimic_data/vocab_diag.txt",
-        "max_len_diag": 148
+        "max_len_diag": 148,
+        "coexist_filename": "mimic_data/coexist_dict.pkl"
         },
     "model": {
         "model_type": "delete",
@@ -40,6 +41,7 @@
         "tgt_layers": 1,
         "decode": "greedy",
         "dropout": 0.2,
-        "add_diagnosis_layer": false
+        "add_diagnosis_layer": false,
+        "add_coexist_layer": false
     }
 }

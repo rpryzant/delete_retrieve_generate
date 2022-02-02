@@ -115,7 +115,7 @@ class StackedAttentionLSTM(nn.Module):
     def forward(self, input, hidden, ctx, srcmask, kb=None):
         h_final, c_final = [], []
         for i, layer in enumerate(self.layers):
-            output, (h_final_i, c_final_i) = layer(input, hidden, ctx, srcmask, kb)
+            output, (h_final_i, c_final_i) = layer(input, hidden, ctx, srcmask, kb) # TODO: add multi-hot vector directly (in teacher forcing? or at inference we use previously genrated)
 
             input = output
 

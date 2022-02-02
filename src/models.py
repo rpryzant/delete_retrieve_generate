@@ -80,6 +80,23 @@ class SeqModel(nn.Module):
                 self.options['emb_dim'],
                 self.pad_id_diag)
 
+        # update: add an embedding layer for coexisting drugs
+        if self.config['model']['add_coexist_layer']: # alternative 1: use a linear layer, transform from 1202 to 256
+            self.coexist_bridge = nn.Linear(
+                    in_features=self.src_vocab_size+1,
+                    out_features=256)
+        """
+        # alternative 2: 
+        # coexist_ht = self.coexist_embedding(coexist_attr); store all the files beforehand, get max_len_coexist_events
+        # coexist_attr.shape: 128 (batch) x 300 (max_len_coexist_events)
+        # coexist_ht.shape = 128 x 300 x 128, then do average pooling or max pooling
+        # 
+        # if self.config['model']['add_drug_coexist_layer']:
+        #     self.coexist_embedding = nn.Embedding(
+        #         self.src_vocab_size,
+        #         self.options['emb_dim'])
+        """
+        
         if self.config['data']['share_vocab']:
             self.tgt_embedding = self.src_embedding
         else:
@@ -100,7 +117,7 @@ class SeqModel(nn.Module):
             if self.config['model']['add_diagnosis_layer']:
                 self.diag_encoder = encoders.LSTMEncoder(
                     emb_dim=128,
-                    hidden_dim=512,                 
+                    hidden_dim=256,                 
                     layers=1,                    
                     bidirectional=False,                # not bidirectional since the patient sequence follows the single-direction order 
                     dropout=0.2,
@@ -137,11 +154,10 @@ class SeqModel(nn.Module):
         else:
             raise NotImplementedError('unknown model type')
 
-        # update: add an embedding layer for diagnosis codes; concatenate with hidden/cell units here
-        if self.config['model']['add_diagnosis_layer']:
-            bridge_dim = attr_size + self.options['src_hidden_dim'] + 512 # 512 == extra dimension by extra diagnosis embeddings, fixed
-        else: 
-            bridge_dim = attr_size + self.options['src_hidden_dim']
+        # update: add an embedding layer for diagnosis codes AND coexisting events; concatenate with hidden/cell units here
+        extra_dim_diag = 256 if self.config['model']['add_diagnosis_layer'] else 0 # 256 == extra dimension by extra diagnosis embeddings, fixed value
+        extra_dim_coexist = 256 if self.config['model']['add_coexist_layer'] else 0 # 256 == the dimension of the extra embedding layer for coexisting drugs
+        bridge_dim = attr_size + self.options['src_hidden_dim'] + extra_dim_diag + extra_dim_coexist
         
         self.c_bridge = nn.Linear(
             bridge_dim,  
@@ -171,7 +187,7 @@ class SeqModel(nn.Module):
         self.c_bridge.bias.data.fill_(0)
         self.output_projection.bias.data.fill_(0)
 
-    def forward(self, input_src, input_tgt, srcmask, srclens, input_attr, attrlens, attrmask, diag_input_lines=None, diag_lens=None, diag_mask=None):
+    def forward(self, input_src, input_tgt, srcmask, srclens, input_attr, attrlens, attrmask, diag_input_lines=None, diag_lens=None, diag_mask=None, coexist_attr=None):
         src_emb = self.src_embedding(input_src)
 
         use_diagnosis_layer = (diag_input_lines is not None) and (diag_lens is not None) and (diag_mask is not None)
@@ -183,9 +199,7 @@ class SeqModel(nn.Module):
         src_outputs, (src_h_t, src_c_t) = self.encoder(src_emb, srclens, srcmask)
         if use_diagnosis_layer:
             diag_outputs, (diag_h_t, diag_c_t) = self.diag_encoder(diag_emb, diag_lens, diag_mask)
-            #diag_outputs.shape = 128x116x512
-            #diag_h_t.shape = 2x128x512
-            #diag_c_t.shape = 2x128x512
+            #diag_outputs.shape = 128x116x512; diag_h_t.shape = 2x128x512; diag_c_t.shape = 2x128x512
 
         if self.options['bidirectional']:
             h_t = torch.cat((src_h_t[-1], src_h_t[-2]), 1) # src_h_t[-2] # src_h_t.shape = 2x128x256
@@ -201,15 +215,22 @@ class SeqModel(nn.Module):
             h_t = torch.cat((h_t, diag_h_t[-1]), -1) # [-1] since no bidirectional, add for the extra embedding layer
             c_t = torch.cat((c_t, diag_c_t[-1]), -1)
 
+        # update: add for coexisting drug events
+        use_coexist_layer = (coexist_attr is not None)
+        if use_coexist_layer:
+            coexist_attr = self.coexist_bridge(coexist_attr)         # coexist_attr.shape = 128 x 1202 -> 128 x 256
+            h_t = torch.cat((h_t, coexist_attr), -1)                 # ht.shape = 128 x 512
+            c_t = torch.cat((c_t, coexist_attr), -1)
+
         # # # #  # # # #  # #  # # # # # # #  # # seq2seq diff
         # join attribute with h/c then bridge 'em
         # TODO -- put this stuff in a method, overlaps w/above
 
         if self.model_type == 'delete':
             # just do h i guess?
-            a_ht = self.attribute_embedding(input_attr)
-            c_t = torch.cat((c_t, a_ht), -1)
-            h_t = torch.cat((h_t, a_ht), -1)
+            a_ht = self.attribute_embedding(input_attr)              # input_attr.shape = 128x1
+            c_t = torch.cat((c_t, a_ht), -1)                         # a_ht.shape = 128x128
+            h_t = torch.cat((h_t, a_ht), -1)                         # c_t.shape = 128x512
 
         elif self.model_type == 'delete_retrieve':
             attr_emb = self.src_embedding(input_attr)

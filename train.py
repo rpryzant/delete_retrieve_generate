@@ -90,8 +90,12 @@ batch_size = config['data']['batch_size']
 max_length = config['data']['max_len']
 src_vocab_size = len(src['tok2id'])
 tgt_vocab_size = len(tgt['tok2id'])
+
 if config['model']['add_diagnosis_layer'] != False:
     diag_vocab_size = len(src['diag_tok2id']) 
+    pad_id_diag=src['diag_tok2id']['<pad>']
+else:
+    diag_vocab_size, pad_id_diag = None, None
 
 weight_mask = torch.ones(tgt_vocab_size)
 weight_mask[tgt['tok2id']['<pad>']] = 0
@@ -103,24 +107,15 @@ if CUDA:
 torch.manual_seed(config['training']['random_seed'])
 np.random.seed(config['training']['random_seed'])
 
-if config['model']['add_diagnosis_layer'] != False:
-    model = models.SeqModel(
-        src_vocab_size=src_vocab_size,
-        tgt_vocab_size=tgt_vocab_size,
-        pad_id_src=src['tok2id']['<pad>'],
-        pad_id_tgt=tgt['tok2id']['<pad>'],
-        config=config,
-        diag_vocab_size=diag_vocab_size,
-        pad_id_diag=src['diag_tok2id']['<pad>'],
-    )
-else:
-    model = models.SeqModel(
-            src_vocab_size=src_vocab_size,
-            tgt_vocab_size=tgt_vocab_size,
-            pad_id_src=src['tok2id']['<pad>'],
-            pad_id_tgt=tgt['tok2id']['<pad>'],
-            config=config
-    )
+model = models.SeqModel(
+    src_vocab_size=src_vocab_size,
+    tgt_vocab_size=tgt_vocab_size,
+    pad_id_src=src['tok2id']['<pad>'],
+    pad_id_tgt=tgt['tok2id']['<pad>'],
+    config=config,
+    diag_vocab_size=diag_vocab_size,    # use if `add_diagnosis_layer`
+    pad_id_diag=pad_id_diag             # use if `add_diagnosis_layer`
+)
 
 logging.info('MODEL HAS %s params' %  model.count_params())
 model, start_epoch = models.attempt_load_model(
@@ -175,14 +170,14 @@ for epoch in range(start_epoch, config['training']['epochs']):
         batch_idx = i / batch_size
 
         input_content, input_aux, output = data.minibatch(
-            src, tgt, i, batch_size, max_length, config['model']['model_type'])
-        input_lines_src, _, srclens, srcmask, _, diag_input_lines, diag_lens, diag_mask = input_content
-        input_ids_aux, _, auxlens, auxmask, _, _, _, _ = input_aux
-        input_lines_tgt, output_lines_tgt, _, _, _, _, _, _ = output
+            src, tgt, i, batch_size, max_length, config['model']['model_type']) 
+        input_lines_src, _, srclens, srcmask, _, diag_input_lines, diag_lens, diag_mask, coexist_attr = input_content
+        input_ids_aux, _, auxlens, auxmask, _, _, _, _, _ = input_aux
+        input_lines_tgt, output_lines_tgt, _, _, _, _, _, _, _ = output
         
         decoder_logit, decoder_probs = model(
             input_lines_src, input_lines_tgt, srcmask, srclens,
-            input_ids_aux, auxlens, auxmask, diag_input_lines, diag_lens, diag_mask)
+            input_ids_aux, auxlens, auxmask, diag_input_lines, diag_lens, diag_mask, coexist_attr)
 
         optimizer.zero_grad()
 

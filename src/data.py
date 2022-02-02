@@ -4,6 +4,7 @@ import random
 import numpy as np
 from nltk import ngrams
 from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
+import pickle
 
 import torch
 from torch.autograd import Variable
@@ -139,11 +140,8 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
         pre_attr = post_attr = set([x.strip() for x in open(attribute_vocab)])
 
     ### update: read diagnosis codes 
-    # add if/else for read the diagnosis codes or not
     if read_diagnosis:
         if train_src is None or train_tgt is None:
-            # TODO: check [s] and [/s] if generated already; do we need?
-            # 2. check extra padding, vocab creation 3: lens of the sequences 4: masks position
             src_diag_lines = [l.strip().lower().split() for l in open(config['data']['src_diag'], 'r')] 
             tgt_diag_lines = [l.strip().lower().split() for l in open(config['data']['tgt_diag'], 'r')] 
         else:
@@ -152,6 +150,13 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
         diag_tok2id, diag_id2tok = build_vocab_maps(config['data']['vocab_diag'])
     else:
         src_diag_lines, tgt_diag_lines, diag_tok2id, diag_id2tok = None, None, None, None
+
+    # update: read the dictionary of coexisting drug/procedure events
+    if config['model']['add_coexist_layer']:
+        with open(config['data']['coexist_filename'], 'rb') as f:
+            coexist_dict = pickle.load(f)
+    else:
+        coexist_dict = None
 
     src_lines = [l.strip().lower().split() for l in open(src, 'r')]
     src_lines, src_content, src_attribute = list(zip(
@@ -173,7 +178,8 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
     src = {
         'data': src_lines, 'content': src_content, 'attribute': src_attribute,
         'tok2id': src_tok2id, 'id2tok': src_id2tok, 'dist_measurer': src_dist_measurer,
-        'src_diag': src_diag_lines, 'diag_tok2id': diag_tok2id, 'diag_id2tok': diag_id2tok
+        'src_diag': src_diag_lines, 'diag_tok2id': diag_tok2id, 'diag_id2tok': diag_id2tok,
+        'coexist_dict': coexist_dict
     }
 
     tgt_lines = [l.strip().lower().split() for l in open(tgt, 'r')] if tgt else None
@@ -203,8 +209,8 @@ def read_nmt_data(src, config, tgt, attribute_vocab, train_src=None, train_tgt=N
     tgt = {
         'data': tgt_lines, 'content': tgt_content, 'attribute': tgt_attribute,
         'tok2id': tgt_tok2id, 'id2tok': tgt_id2tok, 'dist_measurer': tgt_dist_measurer,
-        'src_diag': tgt_diag_lines, 'diag_tok2id': diag_tok2id, 'diag_id2tok': diag_id2tok
-
+        'src_diag': tgt_diag_lines, 'diag_tok2id': diag_tok2id, 'diag_id2tok': diag_id2tok,
+        'coexist_dict': coexist_dict 
     }
     return src, tgt
 
@@ -238,7 +244,7 @@ def sample_replace(lines, dist_measurer, sample_rate, corpus_idx):
 
 
 def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=None,
-        dist_measurer=None, sample_rate=0.0, diag_lines=None, diag_tok2id=None):
+        dist_measurer=None, sample_rate=0.0, diag_lines=None, diag_tok2id=None, coexist_dict=None):
     """Prepare minibatch."""
     # FORCE NO SORTING because we care about the order of outputs
     #   to compare across systems
@@ -251,7 +257,7 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
         lines = sample_replace(lines, dist_measurer, sample_rate, index)
 
     lens = [len(line) - 1 for line in lines]
-    max_len = max(lens)
+    max_len = max(lens) # TODO: why flexible max_len? e.g. max_length = 93
 
     unk_id = tok2id['<unk>']
     input_lines = [
@@ -295,6 +301,19 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
     else:
         diag_input_lines, diag_lens, diag_mask = None, None, None
 
+    if coexist_dict:
+        coexist_list = [[coexist_dict.get(w, {}) for w in line] for line in lines] # return empty set `{}` if "admin" or "admout" in the middle of sequence
+        coexist_attr = [set().union(*l) for l in coexist_list]
+        coexist_attr_idx = [np.array([tok2id.get(w, unk_id) for w in line]) if line else np.array([0]) for line in coexist_attr]
+       
+        # generate multi-hot vectors here
+        multihot_size = len(coexist_attr)
+        coexist_multihot = np.zeros((multihot_size, len(tok2id)+1))
+        for i in np.arange(multihot_size):
+            coexist_multihot[i, coexist_attr_idx[i]] = 1
+        coexist_multihot = Variable(torch.FloatTensor(coexist_multihot))
+    else:
+        coexist_multihot = None
 
     if sort:
         # sort sequence by descending length
@@ -316,8 +335,10 @@ def get_minibatch(lines, tok2id, index, batch_size, max_len, sort=False, idx=Non
         mask = mask.cuda()
         if diag_input_lines is not None and diag_mask is not None:
             diag_input_lines, diag_mask = diag_input_lines.cuda(), diag_mask.cuda()
+        if coexist_multihot is not None:
+            coexist_multihot = coexist_multihot.cuda()
 
-    return input_lines, output_lines, lens, mask, idx, diag_input_lines, diag_lens, diag_mask
+    return input_lines, output_lines, lens, mask, idx, diag_input_lines, diag_lens, diag_mask, coexist_multihot
 
 
 def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
@@ -333,9 +354,10 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
 
     if model_type == 'delete':
         inputs = get_minibatch(
-            in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True, diag_lines=in_dataset['src_diag'], diag_tok2id=in_dataset['diag_tok2id']) #TODO: use `max_len_diag`???
+            in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True, 
+            diag_lines=in_dataset['src_diag'], diag_tok2id=in_dataset['diag_tok2id'], coexist_dict=in_dataset['coexist_dict']) #TODO: use `max_len_diag`?
         outputs = get_minibatch(
-            out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[4]) # TODO: fix inputs[-1])
+            out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[4]) # TODO: fix inputs[-1]), the position of indexs
 
         # true length could be less than batch_size at edge of data
         batch_len = len(outputs[0])
@@ -344,13 +366,14 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
         if CUDA:
             attribute_ids = attribute_ids.cuda()
 
-        attributes = (attribute_ids, None, None, None, None, None, None, None)
+        attributes = (attribute_ids, None, None, None, None, None, None, None, None)
 
     elif model_type == 'delete_retrieve':
         inputs =  get_minibatch(
-            in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True, diag_lines=in_dataset['src_diag'], diag_tok2id=in_dataset['diag_tok2id']) #TODO: use `max_len_diag`???
+            in_dataset['content'], in_dataset['tok2id'], idx, batch_size, max_len, sort=True, 
+            diag_lines=in_dataset['src_diag'], diag_tok2id=in_dataset['diag_tok2id'], coexist_dict=in_dataset['coexist_dict']) #TODO: use `max_len_diag`?
         outputs = get_minibatch(
-            out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[4]) # TODO: fix inputs[-1]), the position of indexs
+            out_dataset['data'], out_dataset['tok2id'], idx, batch_size, max_len, idx=inputs[4]) 
 
         if is_test:
             # This dist_measurer has sentence attributes for values, so setting 
@@ -373,7 +396,7 @@ def minibatch(src, tgt, idx, batch_size, max_len, model_type, is_test=False):
             src['data'], src['tok2id'], idx, batch_size, max_len, sort=True)
         outputs = get_minibatch(
             tgt['data'], tgt['tok2id'], idx, batch_size, max_len, idx=inputs[4])
-        attributes = (None, None, None, None, None, None, None, None)
+        attributes = (None, None, None, None, None, None, None, None, None)
 
     else:
         raise Exception('Unsupported model_type: %s' % model_type)
