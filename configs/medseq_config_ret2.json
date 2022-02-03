@@ -1,0 +1,47 @@
+{
+    "training": {
+        "optimizer": "adam",
+        "learning_rate": 0.0003,
+        "max_norm": 3.0,
+        "epochs": 500,
+        "batches_per_report": 200,
+        "batches_per_sampling": 500,
+        "random_seed": 1
+    },
+    "data": {
+        "src": "mimic_data_cardiovascular5/train_neg.txt",
+        "tgt": "mimic_data_cardiovascular5/train_pos.txt",
+        "src_test": "mimic_data_cardiovascular5/validation_neg.txt",
+        "tgt_test": "mimic_data_cardiovascular5/validation_pos.txt",
+        "src_vocab": "mimic_data_cardiovascular5/vocab.txt",
+        "tgt_vocab": "mimic_data_cardiovascular5/vocab.txt",
+        "share_vocab": true,
+        "attribute_vocab": "mimic_data_cardiovascular5/ngram_attribute_vocab.txt",
+        "ngram_attributes": true,
+        "batch_size": 128,
+        "max_len": 104,
+        "working_dir": "working_dir_cardiovascular5_delete_ret2",
+        "src_diag": "mimic_data_cardiovascular5/train_neg_diag.txt",
+        "tgt_diag": "mimic_data_cardiovascular5/train_pos_diag.txt",
+        "src_test_diag": "mimic_data_cardiovascular5/validation_neg_diag.txt",
+        "tgt_test_diag": "mimic_data_cardiovascular5/validation_pos_diag.txt",
+        "vocab_diag": "mimic_data_cardiovascular5/vocab_diag.txt",
+        "max_len_diag": 148,
+        "coexist_filename": "mimic_data_cardiovascular5/coexist_dict.pkl"
+        },
+    "model": {
+        "model_type": "delete_retrieve",
+        "emb_dim": 128,
+        "attention": false,
+        "encoder": "lstm",
+        "src_hidden_dim": 512,
+        "src_layers": 1,
+        "bidirectional": true,
+        "tgt_hidden_dim": 512,
+        "tgt_layers": 1,
+        "decode": "greedy",
+        "dropout": 0.2,
+        "add_diagnosis_layer": true,
+        "add_coexist_layer": false
+    }
+}

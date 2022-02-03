@@ -227,14 +227,14 @@ for epoch in range(start_epoch, config['training']['epochs']):
         cur_metric, edit_distance, inputs, preds, golds, auxs = evaluation.inference_metrics(
             model, src_test, tgt_test, config)
 
-        with open(working_dir + '/auxs.%s' % epoch, 'w') as f:
-            f.write('\n'.join(auxs) + '\n')
-        with open(working_dir + '/inputs.%s' % epoch, 'w') as f:
-            f.write('\n'.join(inputs) + '\n')
-        with open(working_dir + '/preds.%s' % epoch, 'w') as f:
-            f.write('\n'.join(preds) + '\n')
-        with open(working_dir + '/golds.%s' % epoch, 'w') as f:
-            f.write('\n'.join(golds) + '\n')
+        # with open(working_dir + '/auxs.%s' % epoch, 'w') as f:
+        #     f.write('\n'.join(auxs) + '\n')
+        # with open(working_dir + '/inputs.%s' % epoch, 'w') as f:
+        #     f.write('\n'.join(inputs) + '\n')
+        # with open(working_dir + '/preds.%s' % epoch, 'w') as f:
+        #     f.write('\n'.join(preds) + '\n')
+        # with open(working_dir + '/golds.%s' % epoch, 'w') as f:
+        #     f.write('\n'.join(golds) + '\n')
 
         writer.add_scalar('eval/edit_distance', edit_distance, epoch)
         writer.add_scalar('eval/bleu', cur_metric, epoch)
