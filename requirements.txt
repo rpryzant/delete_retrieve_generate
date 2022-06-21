@@ -1,6 +1,6 @@
 editdistance==0.5.3
 joblib==0.13.2
-numpy==1.16.4
+numpy==1.22.0
 Pillow==8.1.1
 protobuf==3.8.0
 sklearn
